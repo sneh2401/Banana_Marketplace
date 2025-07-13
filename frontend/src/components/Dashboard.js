@@ -1,358 +1,388 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import ProductList from './ProductList';
+import React, { useState } from "react";
 
-const Dashboard = ({ user, onLogout }) => {
-  const [products, setProducts] = useState([]);
-  const [myProducts, setMyProducts] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [newProduct, setNewProduct] = useState({
-    variety: '',
-    quantity: '',
-    pricePerKg: '',
-    qualityGrade: 'standard',
-    harvestDate: '',
-    description: '',
-    location: ''
+const ProductList = ({ products, userType, title, isMyProducts = false }) => {
+  const [filters, setFilters] = useState({
+    variety: "",
+    qualityGrade: "",
+    location: "",
   });
 
-  useEffect(() => {
-    fetchProducts();
-    if (user.userType === 'farmer') {
-      fetchMyProducts();
-    }
-  }, [user.userType]);
-
-  const fetchProducts = async () => {
-    try {
-      const response = await axios.get('http://localhost:5000/api/products');
-      if (response.data.success) {
-        setProducts(response.data.products);
-      }
-    } catch (error) {
-      console.error('Error fetching products:', error);
-    }
-  };
-
-  const fetchMyProducts = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/products/my-products', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (response.data.success) {
-        setMyProducts(response.data.products);
-      }
-    } catch (error) {
-      console.error('Error fetching my products:', error);
-    }
-  };
-
-  const handleProductSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.post('http://localhost:5000/api/products', newProduct, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      if (response.data.success) {
-        alert('Product added successfully!');
-        setNewProduct({
-          variety: '',
-          quantity: '',
-          pricePerKg: '',
-          qualityGrade: 'standard',
-          harvestDate: '',
-          description: '',
-          location: ''
-        });
-        fetchProducts();
-        fetchMyProducts();
-      }
-    } catch (error) {
-      console.error('Error creating product:', error);
-      alert(error.response?.data?.message || 'Error adding product');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleInputChange = (e) => {
-    setNewProduct({
-      ...newProduct,
-      [e.target.name]: e.target.value
+  const handleFilterChange = (e) => {
+    setFilters({
+      ...filters,
+      [e.target.name]: e.target.value,
     });
   };
 
-  const getTomorrowDate = () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toISOString().split('T')[0];
+  const clearFilters = () => {
+    setFilters({
+      variety: "",
+      qualityGrade: "",
+      location: "",
+    });
+  };
+
+  const filteredProducts = products.filter((product) => {
+    return (
+      (!filters.variety ||
+        product.variety
+          .toLowerCase()
+          .includes(filters.variety.toLowerCase())) &&
+      (!filters.qualityGrade ||
+        product.quality_grade === filters.qualityGrade) &&
+      (!filters.location ||
+        product.location.toLowerCase().includes(filters.location.toLowerCase()))
+    );
+  });
+
+  const handleContact = (product) => {
+    const message = `Hi ${product.farmer_name}, I'm interested in your ${product.variety} bananas (${product.quantity_kg}kg at ₹${product.price_per_kg}/kg). Can we discuss further?`;
+    const whatsappUrl = `https://wa.me/${product.farmer_phone?.replace(
+      /[^\d]/g,
+      ""
+    )}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, "_blank");
+  };
+
+  const getQualityBadgeStyle = (grade) => {
+    const colors = {
+      premium: { backgroundColor: "#f39c12", color: "white" },
+      organic: { backgroundColor: "#27ae60", color: "white" },
+      standard: { backgroundColor: "#95a5a6", color: "white" },
+    };
+    return { ...styles.qualityBadge, ...colors[grade] };
+  };
+
+  const getStatusBadgeStyle = (status) => {
+    const colors = {
+      available: { backgroundColor: "#27ae60", color: "white" },
+      sold: { backgroundColor: "#e74c3c", color: "white" },
+      expired: { backgroundColor: "#95a5a6", color: "white" },
+    };
+    return { ...styles.qualityBadge, ...colors[status] };
   };
 
   const styles = {
-    container: {
-      maxWidth: '1200px',
-      margin: '0 auto',
-      padding: '20px'
+    section: {
+      backgroundColor: "white",
+      padding: "30px",
+      borderRadius: "8px",
+      marginBottom: "30px",
+      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
     },
-    header: {
-      backgroundColor: '#2c3e50',
-      color: 'white',
-      padding: '20px',
-      borderRadius: '8px',
-      marginBottom: '30px',
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      flexWrap: 'wrap'
+    sectionHeader: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: "20px",
+      flexWrap: "wrap",
+      gap: "15px",
     },
-    userInfo: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '15px'
+    title: {
+      fontSize: "24px",
+      fontWeight: "bold",
+      color: "#2c3e50",
+      margin: 0,
     },
-    avatar: {
-      width: '60px',
-      height: '60px',
-      borderRadius: '50%',
-      backgroundColor: '#27ae60',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: '24px'
+    count: {
+      fontSize: "16px",
+      color: "#666",
     },
-    userDetails: {
-      lineHeight: '1.5'
+    filtersContainer: {
+      backgroundColor: "#f8f9fa",
+      padding: "20px",
+      borderRadius: "8px",
+      marginBottom: "20px",
     },
-    userName: {
-      fontSize: '24px',
-      fontWeight: 'bold',
-      margin: '0'
+    filtersGrid: {
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+      gap: "15px",
+      marginBottom: "15px",
     },
-    userRole: {
-      fontSize: '14px',
-      opacity: '0.8',
-      margin: '0'
+    grid: {
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+      gap: "20px",
     },
-    headerActions: {
-      display: 'flex',
-      gap: '10px'
+    card: {
+      border: "1px solid #e9ecef",
+      borderRadius: "8px",
+      padding: "20px",
+      backgroundColor: "#fff",
+      transition: "transform 0.2s ease, box-shadow 0.2s ease",
     },
-    sectionTitle: {
-      fontSize: '24px',
-      fontWeight: 'bold',
-      marginBottom: '20px',
-      color: '#2c3e50'
+    cardHover: {
+      transform: "translateY(-2px)",
+      boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
     },
-    formGrid: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-      gap: '15px',
-      marginBottom: '20px'
+    cardHeader: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: "15px",
     },
-    statsGrid: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-      gap: '20px',
-      marginBottom: '30px'
+    variety: {
+      fontSize: "20px",
+      fontWeight: "bold",
+      color: "#2c3e50",
+      margin: 0,
     },
-    statCard: {
-      backgroundColor: 'white',
-      padding: '20px',
-      borderRadius: '8px',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-      textAlign: 'center'
+    price: {
+      fontSize: "18px",
+      fontWeight: "bold",
+      color: "#27ae60",
     },
-    statNumber: {
-      fontSize: '32px',
-      fontWeight: 'bold',
-      color: '#27ae60',
-      margin: '0'
+    detail: {
+      margin: "8px 0",
+      color: "#555",
+      display: "flex",
+      alignItems: "center",
+      gap: "5px",
     },
-    statLabel: {
-      fontSize: '14px',
-      color: '#666',
-      margin: '5px 0 0 0'
-    }
+    detailLabel: {
+      fontWeight: "600",
+      minWidth: "80px",
+    },
+    farmer: {
+      display: "flex",
+      alignItems: "center",
+      marginTop: "15px",
+      paddingTop: "15px",
+      borderTop: "1px solid #e9ecef",
+    },
+    farmerAvatar: {
+      width: "40px",
+      height: "40px",
+      borderRadius: "50%",
+      backgroundColor: "#27ae60",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: "10px",
+      fontSize: "18px",
+    },
+    farmerInfo: {
+      flex: 1,
+    },
+    farmerName: {
+      fontWeight: "bold",
+      margin: 0,
+      fontSize: "14px",
+    },
+    farmerEmail: {
+      fontSize: "12px",
+      color: "#666",
+      margin: 0,
+    },
+    qualityBadge: {
+      padding: "4px 8px",
+      borderRadius: "12px",
+      fontSize: "12px",
+      fontWeight: "bold",
+      textTransform: "uppercase",
+      display: "inline-block",
+    },
+    actions: {
+      marginTop: "15px",
+      display: "flex",
+      gap: "10px",
+    },
+    emptyState: {
+      textAlign: "center",
+      padding: "60px 20px",
+      color: "#666",
+    },
+    emptyIcon: {
+      fontSize: "64px",
+      marginBottom: "20px",
+    },
+    emptyText: {
+      fontSize: "18px",
+      marginBottom: "10px",
+    },
+    emptySubtext: {
+      fontSize: "14px",
+      color: "#999",
+    },
   };
 
   return (
-    <div style={styles.container}>
-      {/* Header */}
-      <div style={styles.header}>
-        <div style={styles.userInfo}>
-          <div style={styles.avatar}>
-            {user.userType === 'farmer' ? '🌱' : '🏪'}
-          </div>
-          <div style={styles.userDetails}>
-            <h2 style={styles.userName}>Welcome, {user.name}!</h2>
-            <p style={styles.userRole}>
-              {user.userType === 'farmer' ? '🌱 Farmer' : '🏪 Wholesaler'} • {user.email}
-            </p>
-            {user.location && <p style={styles.userRole}>📍 {user.location}</p>}
-          </div>
-        </div>
-        <div style={styles.headerActions}>
-          <button className="btn btn-danger" onClick={onLogout}>
-            Logout
-          </button>
-        </div>
-      </div>
-
-      {/* Statistics */}
-      <div style={styles.statsGrid}>
-        <div style={styles.statCard}>
-          <p style={styles.statNumber}>{products.length}</p>
-          <p style={styles.statLabel}>Available Products</p>
-        </div>
-        {user.userType === 'farmer' && (
-          <div style={styles.statCard}>
-            <p style={styles.statNumber}>{myProducts.length}</p>
-            <p style={styles.statLabel}>My Products</p>
-          </div>
-        )}
-        <div style={styles.statCard}>
-          <p style={styles.statNumber}>
-            {user.userType === 'farmer' ? '🌱' : '🏪'}
-          </p>
-          <p style={styles.statLabel}>
-            {user.userType === 'farmer' ? 'Farmer Account' : 'Wholesaler Account'}
+    <div style={styles.section}>
+      <div style={styles.sectionHeader}>
+        <div>
+          <h3 style={styles.title}>{title}</h3>
+          <p style={styles.count}>
+            {filteredProducts.length}{" "}
+            {filteredProducts.length === 1 ? "product" : "products"}
+            {filteredProducts.length !== products.length &&
+              ` (filtered from ${products.length})`}
           </p>
         </div>
       </div>
 
-      {/* Farmer Product Form */}
-      {user.userType === 'farmer' && (
-        <div className="card">
-          <h3 style={styles.sectionTitle}>🌱 Add New Product</h3>
-          <form onSubmit={handleProductSubmit}>
-            <div style={styles.formGrid}>
-              <div className="form-group">
-                <label className="form-label">Banana Variety:</label>
-                <input
-                  type="text"
-                  name="variety"
-                  value={newProduct.variety}
-                  onChange={handleInputChange}
-                  className="form-input"
-                  placeholder="e.g., Cavendish, Robusta"
-                  required
-                />
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Quantity (kg):</label>
-                <input
-                  type="number"
-                  name="quantity"
-                  value={newProduct.quantity}
-                  onChange={handleInputChange}
-                  className="form-input"
-                  min="1"
-                  required
-                />
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Price per kg (₹):</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  name="pricePerKg"
-                  value={newProduct.pricePerKg}
-                  onChange={handleInputChange}
-                  className="form-input"
-                  min="0.01"
-                  required
-                />
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Quality Grade:</label>
-                <select
-                  name="qualityGrade"
-                  value={newProduct.qualityGrade}
-                  onChange={handleInputChange}
-                  className="form-select"
-                  required
-                >
-                  <option value="standard">Standard</option>
-                  <option value="premium">Premium</option>
-                  <option value="organic">Organic</option>
-                </select>
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Harvest Date:</label>
-                <input
-                  type="date"
-                  name="harvestDate"
-                  value={newProduct.harvestDate}
-                  onChange={handleInputChange}
-                  className="form-input"
-                  min={getTomorrowDate()}
-                  required
-                />
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Location:</label>
-                <input
-                  type="text"
-                  name="location"
-                  value={newProduct.location}
-                  onChange={handleInputChange}
-                  className="form-input"
-                  placeholder="e.g., Kerala, India"
-                  required
-                />
-              </div>
-            </div>
-            
+      {/* Filters */}
+      {!isMyProducts && products.length > 0 && (
+        <div style={styles.filtersContainer}>
+          <h4 style={{ marginBottom: "15px", color: "#333" }}>
+            🔍 Filter Products
+          </h4>
+          <div style={styles.filtersGrid}>
             <div className="form-group">
-              <label className="form-label">Description (Optional):</label>
-              <textarea
-                name="description"
-                value={newProduct.description}
-                onChange={handleInputChange}
-                className="form-textarea"
-                placeholder="Describe your bananas..."
-                rows="3"
+              <label className="form-label">Variety:</label>
+              <input
+                type="text"
+                name="variety"
+                value={filters.variety}
+                onChange={handleFilterChange}
+                className="form-input"
+                placeholder="e.g., Cavendish"
               />
             </div>
-            
-            <button 
-              type="submit" 
-              className="btn btn-primary"
-              disabled={loading}
-            >
-              {loading ? 'Adding Product...' : 'Add Product'}
-            </button>
-          </form>
+
+            <div className="form-group">
+              <label className="form-label">Quality Grade:</label>
+              <select
+                name="qualityGrade"
+                value={filters.qualityGrade}
+                onChange={handleFilterChange}
+                className="form-select"
+              >
+                <option value="">All Grades</option>
+                <option value="standard">Standard</option>
+                <option value="premium">Premium</option>
+                <option value="organic">Organic</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Location:</label>
+              <input
+                type="text"
+                name="location"
+                value={filters.location}
+                onChange={handleFilterChange}
+                className="form-input"
+                placeholder="e.g., Kerala"
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={clearFilters}
+            className="btn btn-secondary"
+            style={{ fontSize: "14px", padding: "8px 16px" }}
+          >
+            Clear Filters
+          </button>
         </div>
       )}
 
-      {/* Product Lists */}
-      <ProductList 
-        products={products} 
-        userType={user.userType}
-        title={user.userType === 'farmer' ? "🌟 All Available Products" : "🍌 Available Bananas"}
-      />
+      {/* Products Grid */}
+      {filteredProducts.length > 0 ? (
+        <div style={styles.grid}>
+          {filteredProducts.map((product) => (
+            <div
+              key={product.id}
+              style={styles.card}
+              onMouseEnter={(e) => {
+                Object.assign(e.currentTarget.style, styles.cardHover);
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "none";
+                e.currentTarget.style.boxShadow = "none";
+              }}
+            >
+              <div style={styles.cardHeader}>
+                <h4 style={styles.variety}>{product.variety}</h4>
+                <div style={styles.price}>₹{product.price_per_kg}/kg</div>
+              </div>
 
-      {user.userType === 'farmer' && myProducts.length > 0 && (
-        <ProductList 
-          products={myProducts} 
-          userType={user.userType}
-          title="📦 My Products"
-          isMyProducts={true}
-        />
+              <div style={{ marginBottom: "15px" }}>
+                <span style={getQualityBadgeStyle(product.quality_grade)}>
+                  {product.quality_grade}
+                </span>
+                {isMyProducts && (
+                  <span
+                    style={{
+                      ...getStatusBadgeStyle(product.status),
+                      marginLeft: "8px",
+                    }}
+                  >
+                    {product.status}
+                  </span>
+                )}
+              </div>
+
+              <div style={styles.detail}>
+                <span style={styles.detailLabel}>📦 Quantity:</span>
+                <span>{product.quantity_kg} kg</span>
+              </div>
+
+              <div style={styles.detail}>
+                <span style={styles.detailLabel}>📅 Harvest:</span>
+                <span>
+                  {new Date(product.harvest_date).toLocaleDateString()}
+                </span>
+              </div>
+
+              <div style={styles.detail}>
+                <span style={styles.detailLabel}>📍 Location:</span>
+                <span>{product.location}</span>
+              </div>
+
+              {product.description && (
+                <div style={styles.detail}>
+                  <span style={styles.detailLabel}>📝 Description:</span>
+                  <span>{product.description}</span>
+                </div>
+              )}
+
+              {!isMyProducts && (
+                <div style={styles.farmer}>
+                  <div style={styles.farmerAvatar}>🌱</div>
+                  <div style={styles.farmerInfo}>
+                    <p style={styles.farmerName}>{product.farmer_name}</p>
+                    <p style={styles.farmerEmail}>{product.farmer_email}</p>
+                  </div>
+                </div>
+              )}
+
+              {userType === "wholesaler" && !isMyProducts && (
+                <div style={styles.actions}>
+                  <button
+                    onClick={() => handleContact(product)}
+                    className="btn btn-primary"
+                    style={{ width: "100%" }}
+                  >
+                    💬 Contact Farmer
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={styles.emptyState}>
+          <div style={styles.emptyIcon}>{isMyProducts ? "📦" : "🍌"}</div>
+          <p style={styles.emptyText}>
+            {isMyProducts
+              ? "No products added yet"
+              : filteredProducts.length === 0 && products.length > 0
+              ? "No products match your filters"
+              : "No products available yet"}
+          </p>
+          <p style={styles.emptySubtext}>
+            {isMyProducts
+              ? "Add your first product using the form above!"
+              : filteredProducts.length === 0 && products.length > 0
+              ? "Try adjusting your filters to see more results"
+              : "Check back later for new listings."}
+          </p>
+        </div>
       )}
     </div>
   );
 };
 
-export default Dashboard;
+export default ProductList;
